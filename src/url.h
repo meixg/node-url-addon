@@ -4,7 +4,6 @@
 #include <nan.h>
 #include <string>
 #include "./deps/ada/ada.h"
-// #include "./search_params.h"
 
 using std::string;
 
@@ -32,11 +31,13 @@ class URL: public Nan::ObjectWrap {
         static NAN_SETTER(SetSearch);
         static NAN_GETTER(GetUsername);
         static NAN_SETTER(SetUsername);
-        // static NAN_GETTER(GetSearchParams);
+        static NAN_GETTER(GetSearchParams);
     private:
         explicit URL(string str = "");
+        ~URL();
         static void New(const Nan::FunctionCallbackInfo<v8::Value>& info);
         ada::result<ada::url> url;
+        Nan::Persistent<v8::Object> searchParams;
 
 };
 #endif

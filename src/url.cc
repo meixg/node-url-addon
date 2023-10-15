@@ -1,6 +1,8 @@
 #include "url.h"
 #include <string>
-#include "./deps/ada/ada.cpp"
+#include "url.h"
+#include "./deps/ada/ada.h"
+#include "./search_params.h"
 
 using std::string;
 
@@ -10,6 +12,15 @@ URL::URL(string str) {
     if (!this->url) {
         Nan::ThrowError("Invalid URL");
     }
+
+    auto search = this->url->get_search();
+    v8::Local<v8::Function> con = Nan::New(SearchParams::constructor);
+    v8::Local<v8::Value> argv[] = { Nan::New(search).ToLocalChecked() };
+    auto searchParams = Nan::NewInstance(con, 1, argv).ToLocalChecked();
+    this->searchParams.Reset(searchParams);
+}
+URL::~URL() {
+    this->searchParams.Reset();
 }
 
 NAN_GETTER(URL::GetHash) {
@@ -128,14 +139,11 @@ NAN_SETTER(URL::SetUsername) {
     url->url->set_username(username);
     info.GetReturnValue().Set(Nan::New(username).ToLocalChecked());
 }
-// NAN_GETTER(URL::GetSearchParams) {
-//     URL* url = ObjectWrap::Unwrap<URL>(info.Holder());
-//     auto search = url->url->get_search();
-//     v8::Local<v8::Function> con = Nan::New(SearchParams::constructor);
-//     v8::Local<v8::Value> argv[] = { Nan::New(search).ToLocalChecked() };
-//     auto searchParams = Nan::NewInstance(con, 1, argv).ToLocalChecked();
-//     info.GetReturnValue().Set(searchParams);
-// }
+NAN_GETTER(URL::GetSearchParams) {
+    URL* url = ObjectWrap::Unwrap<URL>(info.Holder());
+    auto searchParams = Nan::New(url->searchParams);
+    info.GetReturnValue().Set(searchParams);
+}
 
 template <auto Getter, auto Setter>
 void SetAccessor(v8::Local<v8::FunctionTemplate> tpl, const char* name) {
@@ -148,7 +156,7 @@ void URL::Init(v8::Local<v8::Object> exports) {
 
     v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
     tpl->SetClassName(Nan::New("URL").ToLocalChecked());
-    tpl->InstanceTemplate()->SetInternalFieldCount(1);
+    tpl->InstanceTemplate()->SetInternalFieldCount(2);
 
     // Nan::SetAccessor(tpl->InstanceTemplate(), Nan::New("hostname").ToLocalChecked(), URL::GetHostname, URL::SetHostname);
     SetAccessor<URL::GetHash, URL::SetHash>(tpl, "hash");
@@ -162,6 +170,7 @@ void URL::Init(v8::Local<v8::Object> exports) {
     SetAccessor<URL::GetProtocol, URL::SetProtocol>(tpl, "protocol");
     SetAccessor<URL::GetSearch, URL::SetSearch>(tpl, "search");
     SetAccessor<URL::GetUsername, URL::SetUsername>(tpl, "username");
+    SetAccessor<URL::GetSearchParams, 0>(tpl, "searchParams");
 
     exports->Set(context, Nan::New("URL").ToLocalChecked(), tpl->GetFunction(context).ToLocalChecked());
 }
